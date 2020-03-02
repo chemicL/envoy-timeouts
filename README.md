@@ -122,7 +122,7 @@ When Envoy can't establish a connection to the target server it will respond wit
 The setting for [cluster's `connect_timeout`](https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cluster.proto)
 
 **Timeout Outcome:**
-503 status code (with message `no healthy upstream* Closing connection 0`).
+503 status code (with message `no healthy upstream* Closing connection 0` or `upstream connect error or disconnect/reset before headers. reset reason: connection failure* Closing connection 0`).
 
 **Diagnosing:**
 `cluster.{cluster_name}.upstream_cx_connect_timeout` metric will increase or `cluster.{cluster_name}.upstream_cx_connect_fail` when connection is refused.
