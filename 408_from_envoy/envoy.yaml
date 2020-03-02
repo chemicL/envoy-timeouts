@@ -1,0 +1,91 @@
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address:
+      protocol: TCP
+      address: 0.0.0.0
+      port_value: 10002
+static_resources:
+  listeners:
+  - name: client_proxy
+    address:
+      socket_address:
+        protocol: TCP
+        address: 0.0.0.0
+        port_value: 10000
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+          stat_prefix: ingress_http_self
+          common_http_protocol_options:
+            idle_timeout: 0.3s
+          route_config:
+            name: local_route_in
+            virtual_hosts:
+            - name: self_other
+              domains: ["*"]
+              routes:
+              - match:
+                  prefix: "/"
+                route:
+                  idle_timeout: 2s
+                  host_rewrite: www.google.com
+                  cluster: target_proxy_cluster
+          http_filters:
+          - name: http.fault
+            typed_config:
+              "@type": type.googleapis.com/envoy.config.filter.http.fault.v2.HTTPFault
+              delay:
+                fixed_delay: 5s
+                percentage:
+                  numerator: 100
+                  denominator: "HUNDRED"
+              upstream_cluster: target_proxy_cluster
+          - name: envoy.router
+  - name: target_proxy
+    address:
+      socket_address:
+        protocol: TCP
+        address: 0.0.0.0
+        port_value: 10001
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+          stat_prefix: ingress_http
+          common_http_protocol_options:
+            idle_timeout: 0.5s
+          route_config:
+            name: local_route_out
+            virtual_hosts:
+            - name: local_service
+              domains: ["*"]
+              routes:
+              - match:
+                  prefix: "/"
+                direct_response:
+                  status: 200
+                  body:
+                    inline_string: "Delayed response, here I am!"
+          http_filters:
+          - name: envoy.router
+  clusters:
+  - name: target_proxy_cluster
+    connect_timeout: 0.25s
+    # common_http_protocol_options:
+    #   idle_timeout: 0.3s
+    type: LOGICAL_DNS
+    dns_lookup_family: V4_ONLY
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: target_proxy_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: host.docker.internal
+                port_value: 10001
