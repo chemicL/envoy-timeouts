@@ -63,8 +63,8 @@ static_resources:
   clusters:
   - name: target_proxy_cluster
     connect_timeout: 1s
-    common_http_protocol_options:
-      idle_timeout: 0.3s
+    # common_http_protocol_options:
+    #   idle_timeout: 0.3s
     type: LOGICAL_DNS
     dns_lookup_family: V4_ONLY
     lb_policy: ROUND_ROBIN
